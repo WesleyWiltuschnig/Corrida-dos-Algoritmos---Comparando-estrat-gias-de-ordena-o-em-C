@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corrida dos Algoritmos — Boi de Ouro</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0d0f14;
+    --surface:  #151820;
+    --card:     #1c2030;
+    --border:   #2a3050;
+    --text:     #e8eaf0;
+    --muted:    #6b7591;
+    --bubble:   #3b82f6;
+    --selection:#f97316;
+    --insertion:#10b981;
+    --accent:   #f1c40f;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID BG ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  /* ── HEADER ── */
+  header { text-align: center; padding: 3rem 0 2.5rem; }
+  .tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: .72rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(241,196,15,.3);
+    padding: .3rem 1rem;
+    border-radius: 100px;
+    margin-bottom: 1.2rem;
+  }
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: .6rem;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle { color: var(--muted); font-size: 1rem; font-weight: 300; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: .5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .4rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    flex: 1;
+    min-width: 160px;
+    padding: .75rem 1rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+  }
+  .tab-btn .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .tab-btn:hover { color: var(--text); background: var(--card); }
+  .tab-btn.active { color: #fff; font-weight: 700; }
+  .tab-btn.active.b { background: rgba(59,130,246,.2); color: #93c5fd; }
+  .tab-btn.active.s { background: rgba(249,115,22,.2); color: #fdba74; }
+  .tab-btn.active.i { background: rgba(16,185,129,.2); color: #6ee7b7; }
+
+  /* ── PANEL ── */
+  .panel { display: none; animation: fadeUp .3s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+
+  /* ── ALGO HEADER ── */
+  .algo-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .algo-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .algo-icon.b { background: rgba(59,130,246,.15); color: #3b82f6; border: 1px solid rgba(59,130,246,.3); }
+  .algo-icon.s { background: rgba(249,115,22,.15); color: #f97316; border: 1px solid rgba(249,115,22,.3); }
+  .algo-icon.i { background: rgba(16,185,129,.15); color: #10b981; border: 1px solid rgba(16,185,129,.3); }
+  .algo-meta h2 { font-size: 1.4rem; font-weight: 600; color: var(--text); }
+  .badges { display: flex; gap: .4rem; margin-top: .3rem; flex-wrap: wrap; }
+  .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: .68rem;
+    padding: .2rem .65rem;
+    border-radius: 100px;
+  }
+  .badge.green { background: rgba(16,185,129,.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,.25); }
+  .badge.red   { background: rgba(239,68,68,.12); color: #fca5a5; border: 1px solid rgba(239,68,68,.2); }
+  .badge.blue  { background: rgba(59,130,246,.12); color: #93c5fd; border: 1px solid rgba(59,130,246,.2); }
+
+  /* ── DESCRIPTION ── */
+  .desc-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1.5rem;
+    font-size: .95rem;
+    color: #c5cae0;
+    line-height: 1.7;
+  }
+  .desc-card .analogy {
+    margin-top: .8rem;
+    padding: .8rem 1rem;
+    border-left: 3px solid;
+    border-radius: 0 8px 8px 0;
+    font-size: .9rem;
+    background: rgba(255,255,255,.03);
+  }
+  .analogy.b { border-color: var(--bubble); }
+  .analogy.s { border-color: var(--selection); }
+  .analogy.i { border-color: var(--insertion); }
+
+  /* ── MAIN GRID ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  @media (max-width: 740px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* ── SIMULATOR ── */
+  .sim-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.4rem;
+  }
+  .sim-title {
+    font-family: 'Space Mono', monospace;
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  /* bars */
+  .bars-area {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 180px;
+    padding: 0 4px 0;
+    margin-bottom: 1rem;
+  }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bar-col {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    transition: height .32s cubic-bezier(.4,0,.2,1), background .25s;
+    position: relative;
+    min-height: 6px;
+  }
+  .bar-col::after {
+    content: attr(data-v);
+    position: absolute;
+    top: -20px;
+    left: 50%; transform: translateX(-50%);
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .bar-idx {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .bar-col.idle     { background: #2a3050; }
+  .bar-col.sorted   { background: #10b981; }
+  .bar-col.comparing { background: #3b82f6; }
+  .bar-col.swapping  { background: #f97316; }
+  .bar-col.key       { background: #f1c40f; }
+  .bar-col.minimum   { background: #f97316; }
+
+  /* controls */
+  .sim-controls {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: .8rem;
+  }
+  .btn {
+    font-family: 'Space Mono', monospace;
+    font-size: .72rem;
+    padding: .5rem .9rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s;
+    letter-spacing: .04em;
+  }
+  .btn:hover { background: var(--card); border-color: var(--muted); }
+  .btn.primary { border-color: rgba(59,130,246,.5); color: #93c5fd; }
+  .btn.primary:hover { background: rgba(59,130,246,.1); }
+
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-size: .78rem;
+    color: var(--muted);
+    margin-bottom: .8rem;
+  }
+  input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+    height: 4px;
+  }
+
+  .counters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: .8rem;
+    flex-wrap: wrap;
+  }
+  .counter {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .5rem .9rem;
+    flex: 1;
+    text-align: center;
+    min-width: 100px;
+  }
+  .counter-label { font-size: .7rem; color: var(--muted); font-family: 'Space Mono', monospace; text-transform: uppercase; letter-spacing: .08em; }
+  .counter-val { font-size: 1.5rem; font-family: 'Space Mono', monospace; font-weight: 700; color: var(--text); }
+
+  .log-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .7rem 1rem;
+    font-size: .82rem;
+    color: var(--muted);
+    line-height: 1.6;
+    min-height: 48px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* scenario selector */
+  .scenario-row {
+    display: flex;
+    gap: .4rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .sc-btn {
+    flex: 1;
+    font-size: .72rem;
+    padding: .4rem .6rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    transition: all .15s;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .sc-btn:hover, .sc-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(241,196,15,.06); }
+
+  /* ── REAL WORLD CARDS ── */
+  .rw-stack { display: flex; flex-direction: column; gap: .7rem; }
+  .rw-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    transition: border-color .2s;
+  }
+  .rw-card:hover { border-color: var(--muted); }
+  .rw-icon { font-size: 1.2rem; margin-bottom: .3rem; }
+  .rw-title { font-size: .9rem; font-weight: 600; color: var(--text); margin-bottom: .3rem; }
+  .rw-desc { font-size: .8rem; color: var(--muted); line-height: 1.6; }
+
+  /* ── COMPLEXITY TABLE ── */
+  .complexity-section { margin-top: 2.5rem; }
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+  .cmp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+  }
+  .cmp-table th {
+    font-family: 'Space Mono', monospace;
+    font-size: .7rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: .6rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .cmp-table td {
+    padding: .75rem 1rem;
+    border-bottom: 1px solid rgba(42,48,80,.6);
+    color: var(--text);
+  }
+  .cmp-table tr:last-child td { border-bottom: none; }
+  .cmp-table td:first-child { font-weight: 600; }
+  .cmp-table .good { color: #6ee7b7; font-family: 'Space Mono', monospace; }
+  .cmp-table .bad  { color: #fca5a5; font-family: 'Space Mono', monospace; }
+  .cmp-table .mid  { color: #fde68a; font-family: 'Space Mono', monospace; }
+  .cmp-row-b td:first-child { color: #93c5fd; }
+  .cmp-row-s td:first-child { color: #fdba74; }
+  .cmp-row-i td:first-child { color: #6ee7b7; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    font-size: .78rem;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+  footer span { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="tag">🥩 Estrutura de Dados · Corrida dos Algoritmos</div>
+    <h1>Três Algoritmos,<br><span>Uma Corrida.</span></h1>
+    <p class="subtitle">Visualize, compare e entenda Bubble, Selection e Insertion Sort</p>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn b active" onclick="showTab('bubble')">
+      <span class="dot" style="background:#3b82f6"></span> Bubble Sort
+    </button>
+    <button class="tab-btn s" onclick="showTab('selection')">
+      <span class="dot" style="background:#f97316"></span> Selection Sort
+    </button>
+    <button class="tab-btn i" onclick="showTab('insertion')">
+      <span class="dot" style="background:#10b981"></span> Insertion Sort
+    </button>
+  </div>
+
+  <!-- ══════════════ BUBBLE SORT ══════════════ -->
+  <div id="panel-bubble" class="panel active">
+    <div class="algo-head">
+      <div class="algo-icon b">BS</div>
+      <div class="algo-meta">
+        <h2>Bubble Sort</h2>
+        <div class="badges">
+          <span class="badge green">Melhor: O(n)</span>
+          <span class="badge red">Pior: O(n²)</span>
+          <span class="badge blue">Médio: O(n²)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="desc-card">
+      Compara pares de elementos <strong>adjacentes</strong> e os troca se estiverem fora de ordem.
+      Repete essa varredura até que nenhuma troca seja necessária.
+      Os valores maiores "sobem" gradualmente para o final — como bolhas de ar na água.
+      <div class="analogy b">
+        💡 <strong>Analogia:</strong> bolhas subindo num copo — as maiores chegam ao topo mais rápido.
+        Com a <em>flag de otimização</em>, se uma passagem inteira não fez nenhuma troca, o algoritmo para.
+        Isso o torna O(n) em listas já ordenadas.
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <!-- simulador -->
+      <div class="sim-card">
+        <div class="sim-title">// simulador interativo</div>
+        <div class="scenario-row">
+          <button class="sc-btn active" onclick="setScenario('bubble','random',this)">Aleatório</button>
+          <button class="sc-btn" onclick="setScenario('bubble','sorted',this)">Já ordenado</button>
+          <button class="sc-btn" onclick="setScenario('bubble','reverse',this)">Invertido</button>
+        </div>
+        <div class="bars-area" id="b-bars"></div>
+        <div class="counters">
+          <div class="counter">
+            <div class="counter-label">Comparações</div>
+            <div class="counter-val" id="b-comp">0</div>
+          </div>
+          <div class="counter">
+            <div class="counter-label">Trocas</div>
+            <div class="counter-val" id="b-swap">0</div>
+          </div>
+        </div>
+        <div class="speed-row">
+          <span>Vel.</span>
+          <input type="range" id="b-speed" min="1" max="5" value="3" step="1">
+          <span id="b-speed-lbl">3</span>
+        </div>
+        <div class="sim-controls">
+          <button class="btn primary" onclick="bStep()">▶ Passo</button>
+          <button class="btn" onclick="bAuto()">⏩ Auto</button>
+          <button class="btn" onclick="bReset()">↺ Reiniciar</button>
+        </div>
+        <div class="log-box" id="b-log">Pressione ▶ Passo para começar.</div>
+      </div>
+
+      <!-- real world -->
+      <div class="rw-stack">
+        <div class="rw-card">
+          <div class="rw-icon">🎓</div>
+          <div class="rw-title">Material educacional</div>
+          <div class="rw-desc">Quase nunca usado em produção, mas é o ponto de partida para ensinar algoritmos por ser visualmente óbvio.</div>
+        </div>
+        <div class="rw-card">
+          <div class="rw-icon">🔧</div>
+          <div class="rw-title">Sistemas embarcados</div>
+          <div class="rw-desc">Microcontroladores com memória mínima que ordenam poucos sensores (temperatura, pressão) em tempo real.</div>
+        </div>
+        <div class="rw-card">
+          <div class="rw-icon">✅</div>
+          <div class="rw-title">Listas quase-ordenadas</div>
+          <div class="rw-desc">Com a flag de parada, detecta que a lista está pronta em O(n) — zero trocas, mínimas comparações.</div>
+        </div>
+        <div class="rw-card">
+          <div class="rw-icon">🎬</div>
+          <div class="rw-title">Visualizações</div>
+          <div class="rw-desc">Ferramentas de ensino usam Bubble Sort por ser o mais intuitivo de animar — cada troca é visível e compreensível.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SELECTION SORT ══════════════ -->
+  <div id="panel-selection" class="panel">
+    <div class="algo-head">
+      <div class="algo-icon s">SS</div>
+      <div class="algo-meta">
+        <h2>Selection Sort</h2>
+        <div class="badges">
+          <span class="badge red">Melhor: O(n²)</span>
+          <span class="badge red">Pior: O(n²)</span>
+          <span class="badge green">Trocas: ≤ n−1</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="desc-card">
+      A cada rodada, <strong>varre todo o trecho não-ordenado</strong> para encontrar o menor elemento
+      e o coloca na posição correta com uma única troca. Não aproveita a ordem existente,
+      mas garante o mínimo possível de movimentações físicas de dados.
+      <div class="analogy s">
+        💡 <strong>Analogia:</strong> você tem 10 cartas embaralhadas. Olha todas, pega a menor,
+        coloca na pilha. Olha as restantes, pega a menor, coloca. Repete — sempre olha tudo antes de mover.
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div class="sim-card">
+        <div class="sim-title">// simulador interativo</div>
+        <div class="scenario-row">
+          <button class="sc-btn active" onclick="setScenario('selection','random',this)">Aleatório</button>
+          <button class="sc-btn" onclick="setScenario('selection','sorted',this)">Já ordenado</button>
+          <button class="sc-btn" onclick="setScenario('selection','reverse',this)">Invertido</button>
+        </div>
+        <div class="bars-area" id="s-bars"></div>
+        <div class="counters">
+          <div class="counter">
+            <div class="counter-label">Comparações</div>
+            <div class="counter-val" id="s-comp">0</div>
+          </div>
+          <div class="counter">
+            <div class="counter-label">Trocas</div>
+            <div class="counter-val" id="s-swap">0</div>
+          </div>
+        </div>
+        <div class="speed-row">
+          <span>Vel.</span>
+          <input type="range" id="s-speed" min="1" max="5" value="3" step="1">
+          <span id="s-speed-lbl">3</span>
+        </div>
+        <div class="sim-controls">
+          <button class="btn primary" onclick="sStep()">▶ Passo</button>
+          <button class="btn" onclick="sAuto()">⏩ Auto</button>
+          <button class="btn" onclick="sReset()">↺ Reiniciar</button>
+        </div>
+        <div class="log-box" id="s-log">Pressione ▶ Passo para começar.</div>
+      </div>
+
+      <div class="rw-stack">
+        <div class="rw-card">
+          <div class="rw-icon">💾</div>
+          <div class="rw-title">Memória Flash / SSD</div>
+          <div class="rw-desc">Cada célula flash suporta número limitado de escritas. Minimizar trocas aumenta a vida útil do dispositivo.</div>
+        </div>
+        <div class="rw-card">
+          <div class="rw-icon">🗄️</div>
+          <div class="rw-title">Banco de dados em disco lento</div>
+          <div class="rw-desc">Mover registros grandes em disco é muito mais caro que comparar. Poucas trocas = menos I/O = mais velocidade.</div>
+        </div>
+        <div class="rw-card">
+          <div class="rw-icon">🏆</div>
+          <div class="rw-title">Seleção de candidatos</div>
+          <div class="rw-desc">Lógica de RH: varre todos os currículos, seleciona o melhor, contrata. Varre os restantes, seleciona o próximo.</div>
+        </div>
+        <div class="rw-card">
+          <div class="rw-icon">🃏</div>
+          <div class="rw-title">Ordenar cartas na mão</div>
+          <div class="rw-desc">Humanos naturalmente usam Selection Sort com cartas físicas — olham tudo, pegam a menor, colocam na pilha ordenada.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ INSERTION SORT ══════════════ -->
+  <div id="panel-insertion" class="panel">
+    <div class="algo-head">
+      <div class="algo-icon i">IS</div>
+      <div class="algo-meta">
+        <h2>Insertion Sort</h2>
+        <div class="badges">
+          <span class="badge green">Melhor: O(n)</span>
+          <span class="badge red">Pior: O(n²)</span>
+          <span class="badge green">Adaptativo</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="desc-card">
+      Pega um elemento de cada vez e o <strong>insere na posição correta</strong> dentro da parte já ordenada.
+      Para de comparar assim que encontra um elemento menor — o que o torna adaptativo:
+      quanto mais ordenada a lista, menos trabalho ele faz.
+      <div class="analogy i">
+        💡 <strong>Analogia:</strong> ordenar cartas no baralho. Você pega uma carta nova e a desliza da direita
+        para a esquerda até achar o lugar certo. Se a mão já estiver ordenada, nenhuma carta se move.
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div class="sim-card">
+        <div class="sim-title">// simulador interativo</div>
+        <div class="scenario-row">
+          <button class="sc-btn active" onclick="setScenario('insertion','random',this)">Aleatório</button>
+          <button class="sc-btn" onclick="setScenario('insertion','sorted',this)">Já ordenado</button>
+          <button class="sc-btn" onclick="setScenario('insertion','reverse',this)">Invertido</button>
+        </div>
+        <div class="bars-area" id="i-bars"></div>
+        <div class="counters">
+          <div class="counter">
+            <div class="counter-label">Comparações</div>
+            <div class="counter-val" id="i-comp">0</div>
+          </div>
+          <div class="counter">
+            <div class="counter-label">Deslocamentos</div>
+            <div class="counter-val" id="i-swap">0</div>
+          </div>
+        </div>
+        <div class="speed-row">
+          <span>Vel.</span>
+          <input type="range" id="i-speed" min="1" max="5" value="3" step="1">
+          <span id="i-speed-lbl">3</span>
+        </div>
+        <div class="sim-controls">
+          <button class="btn primary" onclick="iStep()">▶ Passo</button>
+          <button class="btn" onclick="iAuto()">⏩ Auto</button>
+          <button class="btn" onclick="iReset()">↺ Reiniciar</button>
+        </div>
+        <div class="log-box" id="i-log">Pressione ▶ Passo para começar.</div>
+      </div>
+
+      <div class="rw-stack">
+        <div class="rw-card">
+          <div class="rw-icon">🐍</div>
+          <div class="rw-title">Python — Timsort</div>
+          <div class="rw-desc">O Python usa Timsort internamente, que usa Insertion Sort para blocos pequenos. Toda chamada a sorted() usa isso.</div>
+        </div>
+        <div class="rw-card">
+          <div class="rw-icon">📊</div>
+          <div class="rw-title">Dados de streaming</div>
+          <div class="rw-desc">Sensores IoT, dados de bolsa e logs chegam em ordem aproximada. Insertion Sort os mantém ordenados com custo mínimo.</div>
+        </div>
+        <div class="rw-card">
+          <div class="rw-icon">🗃️</div>
+          <div class="rw-title">Banco de dados OLTP</div>
+          <div class="rw-desc">Novos registros chegam constantemente. Insertion Sort insere cada novo item no lugar certo em tempo quase linear.</div>
+        </div>
+        <div class="rw-card">
+          <div class="rw-icon">🏅</div>
+          <div class="rw-title">Placar em tempo real</div>
+          <div class="rw-desc">Quando poucos jogadores mudam de posição, Insertion Sort atualiza o ranking quase instantaneamente.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ TABELA COMPARATIVA ══════════════ -->
+  <div class="complexity-section">
+    <div class="section-label">// tabela comparativa — complexidade e características</div>
+    <div class="sim-card">
+      <table class="cmp-table">
+        <thead>
+          <tr>
+            <th>Algoritmo</th>
+            <th>Melhor caso</th>
+            <th>Caso médio</th>
+            <th>Pior caso</th>
+            <th>Trocas</th>
+            <th>Adaptativo?</th>
+            <th>Uso real</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="cmp-row-b">
+            <td>Bubble Sort</td>
+            <td class="good">O(n)</td>
+            <td class="bad">O(n²)</td>
+            <td class="bad">O(n²)</td>
+            <td class="bad">O(n²)</td>
+            <td class="good">Sim ✓</td>
+            <td>Educação, listas pequenas</td>
+          </tr>
+          <tr class="cmp-row-s">
+            <td>Selection Sort</td>
+            <td class="bad">O(n²)</td>
+            <td class="bad">O(n²)</td>
+            <td class="bad">O(n²)</td>
+            <td class="good">O(n)</td>
+            <td class="bad">Não ✗</td>
+            <td>Flash, disco, baixo I/O</td>
+          </tr>
+          <tr class="cmp-row-i">
+            <td>Insertion Sort</td>
+            <td class="good">O(n)</td>
+            <td class="mid">O(n²)</td>
+            <td class="bad">O(n²)</td>
+            <td class="mid">O(n²)</td>
+            <td class="good">Sim ✓</td>
+            <td>Timsort, streaming, OLTP</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    Casa de Carnes <span>"Boi de Ouro"</span> · Estrutura de Dados · Algoritmos de Ordenação
+  </footer>
+
+</div>
+<script>
+// ─── DATA ────────────────────────────────────────────────
+const SCENARIOS = {
+  random:  [64, 34, 25, 12, 22, 11, 90],
+  sorted:  [11, 12, 22, 25, 34, 64, 90],
+  reverse: [90, 64, 34, 25, 22, 12, 11]
+};
+
+// ─── TAB SWITCH ──────────────────────────────────────────
+function showTab(name) {
+  ['bubble','selection','insertion'].forEach(t => {
+    document.getElementById('panel-'+t).classList.toggle('active', t === name);
+    document.querySelectorAll('.tab-btn').forEach((b,i) => {
+      const map = ['bubble','selection','insertion'];
+      b.classList.toggle('active', map[i] === name);
+    });
+  });
+}
+
+// ─── SPEED LABELS ────────────────────────────────────────
+['b','s','i'].forEach(p => {
+  const el = document.getElementById(p+'-speed');
+  if(el) el.addEventListener('input', () => {
+    document.getElementById(p+'-speed-lbl').textContent = el.value;
+  });
+});
+
+// ─── BARS RENDERER ───────────────────────────────────────
+function renderBars(containerId, arr, states) {
+  const el = document.getElementById(containerId);
+  const maxV = Math.max(...arr);
+  el.innerHTML = arr.map((v, i) => {
+    const h = Math.round((v / maxV) * 150);
+    const st = states && states[i] ? states[i] : 'idle';
+    return `<div class="bar-wrap">
+      <div class="bar-col ${st}" style="height:${h}px" data-v="${v}"></div>
+      <div class="bar-idx">[${i}]</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── SCENARIO SETTER ─────────────────────────────────────
+function setScenario(algo, name, btn) {
+  btn.closest('.scenario-row').querySelectorAll('.sc-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if(algo === 'bubble')    { bScenario = name; bReset(); }
+  if(algo === 'selection') { sScenario = name; sReset(); }
+  if(algo === 'insertion') { iScenario = name; iReset(); }
+}
+
+function getDelay(id) {
+  const spd = parseInt(document.getElementById(id).value);
+  return (6 - spd) * 160 + 60;
+}
+
+// ════════════════════════════════════════════════════════
+//  BUBBLE SORT
+// ════════════════════════════════════════════════════════
+let bArr, bI, bJ, bComp, bSwap, bDone, bTimer, bScenario = 'random';
+
+function bReset() {
+  clearInterval(bTimer);
+  bArr = [...SCENARIOS[bScenario]]; bI=0; bJ=0; bComp=0; bSwap=0; bDone=false;
+  renderBars('b-bars', bArr, null);
+  document.getElementById('b-comp').textContent = 0;
+  document.getElementById('b-swap').textContent = 0;
+  document.getElementById('b-log').textContent = 'Pressione ▶ Passo para começar.';
+}
+
+function bStep() {
+  if (bDone) { document.getElementById('b-log').textContent = '✅ Ordenação concluída!'; return; }
+  const n = bArr.length;
+  if (bI >= n - 1) {
+    bDone = true;
+    renderBars('b-bars', bArr, bArr.map(() => 'sorted'));
+    document.getElementById('b-log').textContent = `✅ Concluído! ${bComp} comparações, ${bSwap} trocas.`;
+    clearInterval(bTimer); return;
+  }
+  if (bJ >= n - 1 - bI) { bI++; bJ = 0; bStep(); return; }
+
+  bComp++;
+  const j = bJ;
+  const states = bArr.map((_, k) => k >= n - bI ? 'sorted' : k === j || k === j+1 ? 'comparing' : 'idle');
+  let msg = `Passagem ${bI+1}: [${j}]=${bArr[j]} vs [${j+1}]=${bArr[j+1]}. `;
+  if (bArr[j] > bArr[j+1]) {
+    [bArr[j], bArr[j+1]] = [bArr[j+1], bArr[j]];
+    bSwap++;
+    states[j] = 'swapping'; states[j+1] = 'swapping';
+    msg += `Troca! → ${bArr[j]} e ${bArr[j+1]}`;
+  } else { msg += `Sem troca.`; }
+  renderBars('b-bars', bArr, states);
+  document.getElementById('b-comp').textContent = bComp;
+  document.getElementById('b-swap').textContent = bSwap;
+  document.getElementById('b-log').textContent = msg;
+  bJ++;
+}
+
+function bAuto() {
+  clearInterval(bTimer);
+  bTimer = setInterval(() => { if (bDone) clearInterval(bTimer); else bStep(); }, getDelay('b-speed'));
+}
+
+// ════════════════════════════════════════════════════════
+//  SELECTION SORT
+// ════════════════════════════════════════════════════════
+let sArr, sI, sJ, sMin, sComp, sSwap, sDone, sTimer, sPhase, sScenario = 'random';
+
+function sReset() {
+  clearInterval(sTimer);
+  sArr = [...SCENARIOS[sScenario]]; sI=0; sJ=1; sMin=0; sComp=0; sSwap=0; sDone=false; sPhase='scan';
+  renderBars('s-bars', sArr, null);
+  document.getElementById('s-comp').textContent = 0;
+  document.getElementById('s-swap').textContent = 0;
+  document.getElementById('s-log').textContent = 'Pressione ▶ Passo para começar.';
+}
+
+function sStep() {
+  if (sDone) { document.getElementById('s-log').textContent = '✅ Ordenação concluída!'; return; }
+  const n = sArr.length;
+  if (sI >= n - 1) {
+    sDone = true;
+    renderBars('s-bars', sArr, sArr.map(() => 'sorted'));
+    document.getElementById('s-log').textContent = `✅ Concluído! ${sComp} comparações, ${sSwap} trocas.`;
+    clearInterval(sTimer); return;
+  }
+  if (sPhase === 'scan') {
+    if (sJ < n) {
+      sComp++;
+      const states = sArr.map((_, k) => k < sI ? 'sorted' : k === sMin ? 'minimum' : k === sJ ? 'comparing' : 'idle');
+      let msg = `Rodada ${sI+1}: [${sJ}]=${sArr[sJ]} vs mínimo [${sMin}]=${sArr[sMin]}. `;
+      if (sArr[sJ] < sArr[sMin]) { sMin = sJ; msg += `Novo mínimo: ${sArr[sMin]}`; }
+      else msg += `Mínimo continua em [${sMin}].`;
+      renderBars('s-bars', sArr, states);
+      document.getElementById('s-comp').textContent = sComp;
+      document.getElementById('s-log').textContent = msg;
+      sJ++;
+    } else { sPhase = 'swap'; sStep(); }
+  } else {
+    let msg = `Rodada ${sI+1} completa. `;
+    if (sMin !== sI) { [sArr[sI], sArr[sMin]] = [sArr[sMin], sArr[sI]]; sSwap++; msg += `Troca [${sI}]↔[${sMin}]. Trocas: ${sSwap}.`; }
+    else msg += `Mínimo já estava no lugar certo. Sem troca.`;
+    sI++; sJ = sI+1; sMin = sI; sPhase = 'scan';
+    renderBars('s-bars', sArr, sArr.map((_, k) => k < sI ? 'sorted' : 'idle'));
+    document.getElementById('s-swap').textContent = sSwap;
+    document.getElementById('s-log').textContent = msg;
+  }
+}
+
+function sAuto() {
+  clearInterval(sTimer);
+  sTimer = setInterval(() => { if (sDone) clearInterval(sTimer); else sStep(); }, getDelay('s-speed'));
+}
+
+// ════════════════════════════════════════════════════════
+//  INSERTION SORT
+// ════════════════════════════════════════════════════════
+let iArr, iOuter, iInner, iKey, iComp, iSwap, iDone, iTimer, iPhase, iScenario = 'random';
+
+function iReset() {
+  clearInterval(iTimer);
+  iArr = [...SCENARIOS[iScenario]]; iOuter=1; iInner=0; iComp=0; iSwap=0; iDone=false; iPhase='pick';
+  renderBars('i-bars', iArr, iArr.map((_, k) => k === 0 ? 'sorted' : 'idle'));
+  document.getElementById('i-comp').textContent = 0;
+  document.getElementById('i-swap').textContent = 0;
+  document.getElementById('i-log').textContent = 'Pressione ▶ Passo para começar.';
+}
+
+function iStep() {
+  const n = iArr.length;
+  if (iOuter >= n) {
+    iDone = true;
+    renderBars('i-bars', iArr, iArr.map(() => 'sorted'));
+    document.getElementById('i-log').textContent = `✅ Concluído! ${iComp} comparações, ${iSwap} deslocamentos.`;
+    clearInterval(iTimer); return;
+  }
+  if (iPhase === 'pick') {
+    iKey = iArr[iOuter]; iInner = iOuter - 1;
+    renderBars('i-bars', iArr, iArr.map((_, k) => k < iOuter ? 'sorted' : k === iOuter ? 'key' : 'idle'));
+    document.getElementById('i-log').textContent = `Rodada ${iOuter}: chave = ${iKey} em [${iOuter}]. Vou inserir no lugar certo.`;
+    iPhase = 'compare';
+  } else if (iPhase === 'compare') {
+    if (iInner >= 0) {
+      iComp++;
+      if (iArr[iInner] > iKey) {
+        iArr[iInner+1] = iArr[iInner]; iSwap++;
+        const states = iArr.map((_, k) => k <= iOuter ? 'sorted' : 'idle');
+        states[iInner] = 'comparing'; states[iInner+1] = 'swapping';
+        renderBars('i-bars', iArr, states);
+        document.getElementById('i-comp').textContent = iComp;
+        document.getElementById('i-swap').textContent = iSwap;
+        document.getElementById('i-log').textContent = `[${iInner}]=${iArr[iInner]} > chave ${iKey} → desloca para direita.`;
+        iInner--;
+      } else {
+        document.getElementById('i-comp').textContent = iComp;
+        document.getElementById('i-log').textContent = `[${iInner}]=${iArr[iInner]} ≤ chave ${iKey} → para aqui.`;
+        iPhase = 'insert';
+      }
+    } else { iPhase = 'insert'; iStep(); }
+  } else {
+    iArr[iInner+1] = iKey; iOuter++; iPhase = 'pick';
+    renderBars('i-bars', iArr, iArr.map((_, k) => k < iOuter ? 'sorted' : 'idle'));
+    document.getElementById('i-log').textContent = `Chave ${iKey} inserida em [${iInner+1}]. Parte ordenada: ${iOuter} elementos.`;
+  }
+}
+
+function iAuto() {
+  clearInterval(iTimer);
+  iTimer = setInterval(() => { if (iDone) clearInterval(iTimer); else iStep(); }, getDelay('i-speed'));
+}
+
+// ─── INIT ────────────────────────────────────────────────
+bReset(); sReset(); iReset();
+</script>
+</body>
+</html>
